@@ -2,8 +2,14 @@ version: 3
 
 silent: true
 
+includes:
+  ddbot:
+    taskfile: ./ddbot
+    dir: ./ddbot
+
 vars:
   NENV: "node_modules"
+  SERVICES: "ddbot"
 
 tasks:
   _prettier:
@@ -27,12 +33,18 @@ tasks:
       - task: _with_nvm
         vars: { COMMAND: "npm run prepare" }
 
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:init"
+
   lint:
     desc: Lint project
     cmds:
       - echo 'Running prettier checks...'
       - task: _prettier
         vars: { COMMAND: "--check ." }
+
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:lint"
 
   lint-fix:
     desc: Lint fix project
@@ -41,16 +53,25 @@ tasks:
       - task: _prettier
         vars: { COMMAND: "--write ." }
 
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:lint-fix"
+
   test:
     desc: Test project
     cmds:
       - echo 'Running tests...'
+
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:test"
 
   clean:
     desc: Clean project environment
     cmds:
       - echo 'Cleaning node dependencies...'
       - rm -rf {{.NENV}}
+
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:clean"
 
   dependencies-update:
     desc: Update dependencies
@@ -63,6 +84,9 @@ tasks:
       - task: _with_nvm
         vars: { COMMAND: "npm audit" }
 
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:dependencies-update"
+
   update-from-template:
     desc: Update project from template
     cmds:
@@ -72,9 +96,12 @@ tasks:
         --overwrite-if-exists
         --output-dir ../
         {{.TEMPLATE_PATH}}
-        project_name="ddbot"
+        project_name="DnD Beyond Telegram Bot"
         project_slug="ddbot"
         node_version="v20.15.1"
-        github_owner="ovsds"
+        owner_name="Dmitry Ovsiannikov"
+        owner_github_login="ovsds"
+        scripts="false"
+        services="ddbot"
     vars:
       TEMPLATE_PATH: '{{.TEMPLATE_PATH | default "https://github.com/ovsds/template-repository"}}'

@@ -1,8 +1,8 @@
-# ddbot
+# DnD Beyond Telegram Bot
 
 [![CI](https://github.com/ovsds/ddbot/workflows/Check%20PR/badge.svg)](https://github.com/ovsds/ddbot/actions?query=workflow%3A%22%22Check+PR%22%22)
 
-dnd beyond telegram bot
+DnD Beyond Telegram Bot
 
 ## Usage
 
