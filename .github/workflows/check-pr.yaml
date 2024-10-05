@@ -29,6 +29,18 @@ jobs:
         run: |
           task lint
 
+      - name: Prepare auxiliary containers
+        working-directory: docker
+        run: |
+          task build
+          task start
+
       - name: Test PR
         run: |
           task test
+
+      - name: Clean up auxiliary containers
+        if: success() || failure()
+        working-directory: docker
+        run: |
+          task clean

@@ -1,0 +1,72 @@
+version: 3
+
+silent: true
+
+vars:
+  DOCKER_PROJECT_NAME: "ddbot"
+  DOCKER_SERVICES: "redis_master"
+
+tasks:
+  _compose:
+    internal: true
+    vars:
+      BASE_FILES:
+        sh: find . -type f -name base-compose.yaml
+      DEV_FILES:
+        sh: find . -type f -name dev-compose.yaml
+      CI_FILES:
+        sh: find . -type f -name ci-compose.yaml
+      ENVIRONMENT: '{{.ENVIRONMENT | default "BASE"}}'
+    cmds:
+      - echo "Using {{.ENVIRONMENT}} environment"
+      - docker compose
+        --project-name {{.DOCKER_PROJECT_NAME}}
+        --project-directory .
+        {{range $i, $file := .BASE_FILES | splitLines }} --file {{$file}}{{end}}
+        {{if eq .ENVIRONMENT "DEV"}}{{range $i, $file := .DEV_FILES | splitLines }} --file {{$file}}{{end}}{{end}}
+        {{if eq .ENVIRONMENT "CI"}}{{range $i, $file := .CI_FILES | splitLines }} --file {{$file}}{{end}}{{end}}
+        {{.COMMAND}}
+
+  build:
+    desc: Build all containers
+    cmds:
+      - task: _compose
+        vars:
+          COMMAND: build
+
+  start:
+    desc: Start all containers detached
+    cmds:
+      - task: _compose
+        vars:
+          COMMAND: up --detach
+
+  stop:
+    desc: Stop all containers
+    cmds:
+      - task: _compose
+        vars:
+          COMMAND: down
+
+  clean:
+    desc: Stop and remove all containers
+    cmds:
+      - task: _compose
+        vars:
+          COMMAND: down --rmi all --volumes --remove-orphans
+
+  show-logs:
+    desc: Show logs for all containers
+    cmds:
+      - task: _compose
+        vars:
+          COMMAND: logs --follow
+
+  check:
+    desc: Check all containers
+    cmds:
+      - for: { var: DOCKER_SERVICES, as: SERVICE }
+        cmd: |
+          echo "Checking {{.SERVICE}}..." && docker compose --project-name {{.DOCKER_PROJECT_NAME}} ps |
+          grep -q {{.SERVICE}} ||
+          (echo "ERROR: service not found"; exit 1)

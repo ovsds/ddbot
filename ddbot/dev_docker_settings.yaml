@@ -1,0 +1,8 @@
+logs:
+  level: DEBUG
+context:
+  type: redis
+  host: ddbot.redis_master
+  port: 6379
+  db: 0
+  password: ddbot_pass

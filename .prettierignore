@@ -1,1 +1,6 @@
+.scripts/.venv
+
+ddbot/.pytest_cache
+ddbot/.ruff_cache
 ddbot/.venv
+ddbot/htmlcov

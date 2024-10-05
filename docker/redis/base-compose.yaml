@@ -1,0 +1,12 @@
+version: "3"
+
+services:
+  redis_master:
+    build: redis/master
+    container_name: ${COMPOSE_PROJECT_NAME}_redis_master
+    hostname: ${REDIS_MASTER_DOCKER_HOST}
+    ports:
+      - "${REDIS_MASTER_PORT}:${REDIS_MASTER_PORT}"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--port", "${REDIS_MASTER_PORT}"]

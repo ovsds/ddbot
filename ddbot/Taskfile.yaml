@@ -13,6 +13,12 @@ vars:
 
   IMAGE_NAME: "ddbot"
 
+  DOCKER_FOLDER: "{{.TASKFILE_DIR}}/../docker"
+  DOCKER_NETWORK: "ddbot_network"
+
+env:
+  SETTINGS_YAML: "{{.TASKFILE_DIR}}/dev_settings.yaml"
+
 tasks:
   _python:
     internal: true
@@ -124,11 +130,25 @@ tasks:
         --target {{.TARGET}}
         .
 
+  image-run:
+    desc: Run image target in container
+    requires:
+      vars:
+        - TARGET
+    cmds:
+      - echo 'Running image {{.TARGET}} target...'
+      - docker run
+        --network {{.DOCKER_NETWORK}}
+        --env-file <( env| cut -f1 -d= )
+        --volume {{.TASKFILE_DIR}}/dev_docker_settings.yaml:/settings.yaml
+        --env SETTINGS_YAML=/settings.yaml
+        {{.IMAGE_NAME}}:{{.TARGET}}
+
   test:
     desc: Run tests
     cmds:
       - echo 'Running pytest...'
-      - "{{.PENV}}/bin/python -m pytest tests"
+      - "{{.PENV}}/bin/python -m pytest tests {{.CLI_ARGS}}"
 
   test-container:
     desc: Run tests in container
@@ -137,8 +157,8 @@ tasks:
         vars: { TARGET: tests }
 
       - echo 'Running tests...'
-      - docker run
-        {{.IMAGE_NAME}}:tests
+      - task: image-run
+        vars: { TARGET: tests }
 
   test-coverage-run:
     desc: Run tests with coverage
@@ -198,8 +218,19 @@ tasks:
         vars: { TARGET: runtime }
 
       - echo 'Running container...'
-      - docker run
-        {{.IMAGE_NAME}}:runtime
+      - task: image-run
+        vars: { TARGET: runtime }
+
+  dev-auxiliary-start:
+    cmds:
+      - echo 'Starting auxiliary containers...'
+      - task -d {{.DOCKER_FOLDER}} build ENVIRONMENT=DEV
+      - task -d {{.DOCKER_FOLDER}} start ENVIRONMENT=DEV
+
+  dev-auxiliary-stop:
+    cmds:
+      - echo 'Stopping auxiliary containers...'
+      - task -d {{.DOCKER_FOLDER}} stop ENVIRONMENT=DEV
 
   update-from-template:
     desc: Update project from template
