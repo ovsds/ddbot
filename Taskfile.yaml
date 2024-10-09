@@ -3,6 +3,9 @@ version: 3
 silent: true
 
 includes:
+  scripts:
+    taskfile: ./.scripts
+    dir: ./.scripts
   ddbot:
     taskfile: ./ddbot
     dir: ./ddbot
@@ -33,6 +36,9 @@ tasks:
       - task: _with_nvm
         vars: { COMMAND: "npm run prepare" }
 
+      - echo 'Installing .scripts dependencies...'
+      - task: scripts:init
+
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:init"
 
@@ -43,6 +49,9 @@ tasks:
       - task: _prettier
         vars: { COMMAND: "--check ." }
 
+      - echo 'Running scripts checks...'
+      - task: scripts:lint
+
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:lint"
 
@@ -52,6 +61,9 @@ tasks:
       - echo 'Running prettier fixes...'
       - task: _prettier
         vars: { COMMAND: "--write ." }
+
+      - echo 'Running scripts fixes...'
+      - task: scripts:lint-fix
 
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:lint-fix"
@@ -70,6 +82,9 @@ tasks:
       - echo 'Cleaning node dependencies...'
       - rm -rf {{.NENV}}
 
+      - echo 'Cleaning .scripts dependencies...'
+      - task: scripts:clean
+
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:clean"
 
@@ -83,6 +98,9 @@ tasks:
         vars: { COMMAND: "npm outdated" }
       - task: _with_nvm
         vars: { COMMAND: "npm audit" }
+
+      - echo 'Updating .scripts dependencies...'
+      - task: scripts:dependencies-update
 
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:dependencies-update"
@@ -101,7 +119,7 @@ tasks:
         node_version="v20.15.1"
         owner_name="Dmitry Ovsiannikov"
         owner_github_login="ovsds"
-        scripts="false"
+        scripts="true"
         services="ddbot"
     vars:
       TEMPLATE_PATH: '{{.TEMPLATE_PATH | default "https://github.com/ovsds/template-repository"}}'

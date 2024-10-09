@@ -1,0 +1,10 @@
+version: "3"
+
+services:
+  redis_master:
+    volumes:
+      - redis_master_data:/data
+
+volumes:
+  redis_master_data:
+    driver: local
