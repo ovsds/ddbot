@@ -190,6 +190,19 @@ class Application:
             )
             aiogram_bot_commands.extend(roll_command_handler.bot_commands)
 
+        roll_command_handler = telegram_command_handlers.RollCommandHandler(
+            context_service=context_service,
+            character_service=character_service,
+            roll_callback=roll_service.roll_initiative,
+            command=telegram_command_handlers.INITIATIVE_COMMAND.command,
+            description=telegram_command_handlers.INITIATIVE_COMMAND.description,
+        )
+        aiogram_dispatcher.message.register(
+            roll_command_handler.process,
+            *roll_command_handler.filters,
+        )
+        aiogram_bot_commands.extend(roll_command_handler.bot_commands)
+
         logger.info("Initializing lifecycle manager")
 
         aiogram_lifecycle = telegram_lifecycle.AiogramLifecycle(

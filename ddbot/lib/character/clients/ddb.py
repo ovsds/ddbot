@@ -1,3 +1,4 @@
+import copy
 import dataclasses
 import enum
 import itertools
@@ -89,13 +90,26 @@ class CharacterData(pydantic.BaseModel):
             PERFORMANCE_SKILL = "performance"
             PERSUASION_SKILL = "persuasion"
 
+            INITIATIVE = "initiative"
+
         class Modifier(pydantic.BaseModel):
+            class BonusType(enum.Enum):
+                PROFICIENCY = 1
+
             type: str
             sub_type: str = pydantic.Field(alias="subType")
             value: int | None
 
+            bonus_types: list[BonusType] = pydantic.Field(alias="bonusTypes")
             friendly_type_name: str = pydantic.Field(alias="friendlyTypeName")
             friendly_subtype_name: str = pydantic.Field(alias="friendlySubtypeName")
+
+            raw_data: dict[str, typing.Any] = pydantic.Field()
+
+            @pydantic.model_validator(mode="before")
+            def _add_raw_data(cls, values: dict[str, typing.Any]) -> dict[str, typing.Any]:
+                values["raw_data"] = copy.deepcopy(values)
+                return values
 
         race: list[Modifier]
         class_: list[Modifier] = pydantic.Field(alias="class")
@@ -243,7 +257,14 @@ class CharacterData(pydantic.BaseModel):
         return False
 
     def _get_subtype_proficiency(self, sub_type: Modifiers.SubType) -> bool:
-        return self._modifier_exists(self.Modifiers.Type.PROFICIENCY, sub_type)
+        if self._modifier_exists(self.Modifiers.Type.PROFICIENCY, sub_type):
+            return True
+
+        for modifier in self._get_filtered_modifiers(self.Modifiers.Type.BONUS, sub_type):
+            if self.Modifiers.Modifier.BonusType.PROFICIENCY in modifier.bonus_types:
+                return True
+
+        return False
 
     def _get_subtype_expertise(self, sub_type: Modifiers.SubType) -> bool:
         return self._modifier_exists(self.Modifiers.Type.EXPERTISE, sub_type)
@@ -319,6 +340,10 @@ class CharacterData(pydantic.BaseModel):
 
         return result
 
+    def _get_initiative_modifier(self) -> int:
+        sub_type_id = self.Modifiers.SubType.INITIATIVE
+        return self._get_subtype_proficiency_bonus(sub_type_id)
+
     def to_dataclass(self) -> models.Character:
         return models.Character(
             id=self.id,
@@ -326,6 +351,7 @@ class CharacterData(pydantic.BaseModel):
             abilities=self._get_abilities(),
             saving_throw_modifiers=self._get_saving_throw_modifiers(),
             skill_modifiers=self._get_skill_modifiers(),
+            initiative_modifier=self._get_initiative_modifier(),
         )
 
 

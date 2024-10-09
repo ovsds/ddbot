@@ -80,6 +80,7 @@ async def test_get_character(
             ddb_models.CharacterSkill.STEALTH: 2,
             ddb_models.CharacterSkill.SURVIVAL: 2,
         },
+        initiative_modifier=2,
     )
 
     character = await http_client.get(character_id)
