@@ -216,6 +216,14 @@ SKILL_CHECK_COMMANDS: list[SkillCheckCommand] = [
 ]
 
 
+class InitiativeCommand:
+    command = "initiative"
+    description = "Roll initiative"
+
+
+INITIATIVE_COMMAND = InitiativeCommand()
+
+
 @dataclasses.dataclass(frozen=True)
 class RollCommandHandler:
     context_service: context_protocols.ContextServiceProtocol
@@ -284,6 +292,7 @@ class RollCommandHandler:
 
 __all__ = [
     "ABILITY_CHECK_COMMANDS",
+    "INITIATIVE_COMMAND",
     "RollCommandHandler",
     "SAVING_THROW_COMMANDS",
     "SKILL_CHECK_COMMANDS",

@@ -40,6 +40,7 @@ class Character:
     abilities: typing.Mapping[CharacterAbility, int]
     saving_throw_modifiers: typing.Mapping[CharacterAbility, int]
     skill_modifiers: typing.Mapping[CharacterSkill, int]
+    initiative_modifier: int
 
 
 @dataclasses.dataclass

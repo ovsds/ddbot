@@ -116,6 +116,21 @@ class RollService:
 
         return callback
 
+    async def roll_initiative(
+        self,
+        character: models.Character,
+    ) -> models.RollResult:
+        assert models.CharacterAbility.DEXTERITY in character.abilities
+
+        logger.debug(f"Rolling initiative for {character}")
+
+        dexterity_score = character.abilities[models.CharacterAbility.DEXTERITY]
+
+        modifier = self._get_modifier_from_ability_score(dexterity_score) + character.initiative_modifier
+        roll_value = self._get_roll_value()
+
+        return models.RollResult(value=roll_value + modifier, details=f"{roll_value}+{modifier}")
+
 
 __all__ = [
     "CharacterService",
