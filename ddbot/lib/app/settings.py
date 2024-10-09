@@ -57,6 +57,8 @@ class TelegramSettings(pydantic_settings.BaseSettings):
             "/sleight_of_hand - Roll a sleight of hand check\n"
             "/stealth - Roll a stealth check\n"
             "/survival - Roll a survival check\n\n"
+            "Miscellaneous commands:\n"
+            "/initiative - Roll an initiative check\n"
             "In case of any issues check the repo: https://github.com/ovsds/ddbot"
         )
 
