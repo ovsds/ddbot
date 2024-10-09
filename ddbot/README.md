@@ -26,10 +26,10 @@ Context repository type `local` does not require any additional settings.
 
 ##### Redis
 
-`CONTEXT__REDIS_HOST` - Redis host.
-`CONTEXT__REDIS_PORT` - Redis port.
-`CONTEXT__REDIS_DB` - Redis database.
-`CONTEXT__REDIS_PASSWORD` - Redis password.
+`CONTEXT__HOST` - Redis host.
+`CONTEXT__PORT` - Redis port.
+`CONTEXT__DB` - Redis database.
+`CONTEXT__PASSWORD` - Redis password.
 
 #### Character Service
 
