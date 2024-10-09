@@ -206,6 +206,7 @@ class Application:
         logger.info("Initializing lifecycle manager")
 
         aiogram_lifecycle = telegram_lifecycle.AiogramLifecycle(
+            logger=logger,
             aiogram_bot=aiogram_bot,
             bot_name=settings.telegram.bot_name,
             bot_short_description=settings.telegram.bot_short_description,
