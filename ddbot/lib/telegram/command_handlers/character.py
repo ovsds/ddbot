@@ -11,6 +11,7 @@ import lib.character.protocols as character_protocols
 import lib.context.models as context_models
 import lib.context.protocols as context_protocols
 import lib.telegram.context as telegram_context
+import lib.telegram.messages as telegram_messages
 import lib.utils.cache as cache_utils
 
 logger = logging.getLogger(__name__)
@@ -37,25 +38,25 @@ class CharacterSetCommandHandler:
         command = self._command.extract_command(message.text)
 
         if command.args is None:
-            await message.reply(text="Usage: /character_set <character_id>")
+            await message.reply(text=telegram_messages.CHARACTER_SET_NO_ARGS)
             return
 
         try:
             character_id = int(command.args)
-        except Exception:
-            await message.reply(text=f"Invalid character_id '{command.args}', expected integer")
+        except ValueError:
+            await message.reply(text=telegram_messages.CHARACTER_SET_INVALID_ARGS.format(character_id=command.args))
             return
 
         try:
             character = await self.character_service.get(character_id)
         except character_protocols.CharacterServiceProtocol.NotFoundError:
-            await message.reply(text=f"Character not found: {character_id}")
+            await message.reply(text=telegram_messages.CHARACTER_FETCH_NOT_FOUND.format(character_id=character_id))
             return
         except character_protocols.CharacterServiceProtocol.AccessError:
-            await message.reply(text=f"Character access error: {character_id}")
+            await message.reply(text=telegram_messages.CHARACTER_FETCH_NO_ACCESS.format(character_id=character_id))
             return
         except character_protocols.CharacterServiceProtocol.RepositoryError:
-            await message.reply(text=f"Unknown error while fetching character: {character_id}")
+            await message.reply(text=telegram_messages.CHARACTER_FETCH_UNKNOWN_ERROR.format(character_id=character_id))
             return
 
         context_key = telegram_context.get_context_key_from_message(message)
@@ -66,7 +67,7 @@ class CharacterSetCommandHandler:
             ),
         )
 
-        await message.reply(text=f"Current character updated: {character.name}")
+        await message.reply(text=telegram_messages.CHARACTER_SET_SUCCESS.format(character_name=character.name))
 
     @property
     def bot_commands(self) -> typing.Sequence[aiogram_types.BotCommand]:
@@ -100,11 +101,11 @@ class CharacterCacheClear:
         try:
             context = await self.context_service.get(key=context_key)
         except context_protocols.ContextServiceProtocol.NotFoundError:
-            await message.reply(text="No character is set")
+            await message.reply(text=telegram_messages.CHARACTER_FETCH_NOT_SET)
             return
 
         await self.cache.clear(str(context.character_id))
-        await message.reply(text="Character cache cleared")
+        await message.reply(text=telegram_messages.CHARACTER_CACHE_CLEAR_SUCCESS)
 
     @property
     def bot_commands(self) -> typing.Sequence[aiogram_types.BotCommand]:
