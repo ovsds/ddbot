@@ -22,8 +22,8 @@ class TelegramSettings(pydantic_settings.BaseSettings):
     def help_message(self) -> str:
         result = (
             "General commands:\n"
-            "/help - Show this message\n"
-            "/character_set - Set your character\n\n"
+            "/character_set - Set your character\n"
+            "/character_cache_clear - Clear your character cache\n\n"
             "Ability check commands:\n"
             "/str_check - Roll a strength check\n"
             "/dex_check - Roll a dexterity check\n"
@@ -57,8 +57,10 @@ class TelegramSettings(pydantic_settings.BaseSettings):
             "/sleight_of_hand - Roll a sleight of hand check\n"
             "/stealth - Roll a stealth check\n"
             "/survival - Roll a survival check\n\n"
-            "Miscellaneous commands:\n"
+            "Miscellaneous checks:\n"
             "/initiative - Roll an initiative check\n"
+            "Other commands:\n"
+            "/help - Show this message\n\n"
             "In case of any issues check the repo: https://github.com/ovsds/ddbot"
         )
 
