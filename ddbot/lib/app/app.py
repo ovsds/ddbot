@@ -116,18 +116,15 @@ class Application:
         logger.info("Initializing telegram client")
         aiogram_bot = aiogram.Bot(token=settings.telegram.token)
         aiogram_dispatcher = aiogram.Dispatcher()
-        aiogram_bot_commands: list[aiogram_types.BotCommand] = []
+        aiogram_general_commands: list[aiogram_types.BotCommand] = []
+        aiogram_ability_check_commands: list[aiogram_types.BotCommand] = []
+        aiogram_saving_throw_commands: list[aiogram_types.BotCommand] = []
+        aiogram_skill_check_commands: list[aiogram_types.BotCommand] = []
+        aiogram_miscellaneous_check_commands: list[aiogram_types.BotCommand] = []
 
         # Handlers
 
         logger.info("Initializing command_handlers")
-
-        help_command_handler = telegram_command_handlers.HelpCommandHandler(
-            text=settings.telegram.help_message,
-        )
-        aiogram_dispatcher.message.register(help_command_handler.process, *help_command_handler.filters)
-        aiogram_bot_commands.extend(help_command_handler.bot_commands)
-
         character_set_command_handler = telegram_command_handlers.CharacterSetCommandHandler(
             context_service=context_service,
             character_service=character_service,
@@ -136,7 +133,7 @@ class Application:
             character_set_command_handler.process,
             *character_set_command_handler.filters,
         )
-        aiogram_bot_commands.extend(character_set_command_handler.bot_commands)
+        aiogram_general_commands.extend(character_set_command_handler.bot_commands)
 
         character_cache_clear_command_handler = telegram_command_handlers.CharacterCacheClear(
             context_service=context_service,
@@ -146,7 +143,7 @@ class Application:
             character_cache_clear_command_handler.process,
             *character_cache_clear_command_handler.filters,
         )
-        aiogram_bot_commands.extend(character_cache_clear_command_handler.bot_commands)
+        aiogram_general_commands.extend(character_cache_clear_command_handler.bot_commands)
 
         for command in telegram_command_handlers.ABILITY_CHECK_COMMANDS:
             roll_command_handler = telegram_command_handlers.RollCommandHandler(
@@ -160,7 +157,7 @@ class Application:
                 roll_command_handler.process,
                 *roll_command_handler.filters,
             )
-            aiogram_bot_commands.extend(roll_command_handler.bot_commands)
+            aiogram_ability_check_commands.extend(roll_command_handler.bot_commands)
 
         for command in telegram_command_handlers.SAVING_THROW_COMMANDS:
             roll_command_handler = telegram_command_handlers.RollCommandHandler(
@@ -174,7 +171,7 @@ class Application:
                 roll_command_handler.process,
                 *roll_command_handler.filters,
             )
-            aiogram_bot_commands.extend(roll_command_handler.bot_commands)
+            aiogram_saving_throw_commands.extend(roll_command_handler.bot_commands)
 
         for command in telegram_command_handlers.SKILL_CHECK_COMMANDS:
             roll_command_handler = telegram_command_handlers.RollCommandHandler(
@@ -188,7 +185,7 @@ class Application:
                 roll_command_handler.process,
                 *roll_command_handler.filters,
             )
-            aiogram_bot_commands.extend(roll_command_handler.bot_commands)
+            aiogram_skill_check_commands.extend(roll_command_handler.bot_commands)
 
         roll_command_handler = telegram_command_handlers.RollCommandHandler(
             context_service=context_service,
@@ -201,7 +198,21 @@ class Application:
             roll_command_handler.process,
             *roll_command_handler.filters,
         )
-        aiogram_bot_commands.extend(roll_command_handler.bot_commands)
+        aiogram_miscellaneous_check_commands.extend(roll_command_handler.bot_commands)
+
+        help_command_handler = telegram_command_handlers.HelpCommandHandler(
+            text=telegram_command_handlers.render_help_message(
+                template=settings.telegram.help_message_template,
+                general_commands=aiogram_general_commands,
+                ability_check_commands=aiogram_ability_check_commands,
+                saving_throw_commands=aiogram_saving_throw_commands,
+                skill_check_commands=aiogram_skill_check_commands,
+                miscellaneous_check_commands=aiogram_miscellaneous_check_commands,
+                escape_characters=settings.telegram.help_message_escape_characters,
+            ),
+        )
+        aiogram_dispatcher.message.register(help_command_handler.process, *help_command_handler.filters)
+        aiogram_general_commands.extend(help_command_handler.bot_commands)
 
         logger.info("Initializing lifecycle manager")
 
@@ -211,7 +222,13 @@ class Application:
             bot_name=settings.telegram.bot_name,
             bot_short_description=settings.telegram.bot_short_description,
             bot_description=settings.telegram.bot_description,
-            bot_commands=aiogram_bot_commands,
+            bot_commands=[
+                *aiogram_general_commands,
+                *aiogram_ability_check_commands,
+                *aiogram_saving_throw_commands,
+                *aiogram_skill_check_commands,
+                *aiogram_miscellaneous_check_commands,
+            ],
         )
         startup_callbacks.extend(aiogram_lifecycle.get_startup_callbacks())
         shutdown_callbacks.extend(aiogram_lifecycle.get_shutdown_callbacks())

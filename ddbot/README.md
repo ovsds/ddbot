@@ -15,6 +15,8 @@
 `TELEGRAM__BOT_NAME` - Telegram bot name.
 `TELEGRAM__BOT_SHORT_DESCRIPTION` - Telegram bot short description.
 `TELEGRAM__BOT_DESCRIPTION` - Telegram bot description.
+`TELEGRAM__HELP_MESSAGE_TEMPLATE` - Telegram bot help message template.
+`TELEGRAM__HELP_MESSAGE_ESCAPE_CHARACTERS` - Telegram bot help message escape characters. Default is `_-.`.
 
 #### Context Repository
 
