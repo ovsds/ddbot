@@ -10,6 +10,7 @@ import lib.character.models as character_models
 import lib.character.protocols as character_protocols
 import lib.context.protocols as context_protocols
 import lib.telegram.context as telegram_context
+import lib.telegram.messages as telegram_messages
 
 logger = logging.getLogger(__name__)
 
@@ -251,26 +252,27 @@ class RollCommandHandler:
             context = await self.context_service.get(key=context_key)
         except context_protocols.ContextServiceProtocol.NotFoundError:
             await message.reply(
-                "Character is not set, use `/character_set <character_id>`",
+                telegram_messages.CHARACTER_FETCH_NOT_SET,
                 parse_mode=aiogram.enums.ParseMode.MARKDOWN_V2,
             )
             return
 
+        character_id = context.character_id
         try:
-            character = await self.character_service.get(entity_id=context.character_id)
+            character = await self.character_service.get(entity_id=character_id)
         except character_protocols.CharacterServiceProtocol.NotFoundError:
-            await message.reply(text=f"Character not found: {context.character_id}")
+            await message.reply(text=telegram_messages.CHARACTER_FETCH_NOT_FOUND.format(character_id=character_id))
             return
         except character_protocols.CharacterServiceProtocol.AccessError:
-            await message.reply(text=f"Character access error: {context.character_id}")
+            await message.reply(text=telegram_messages.CHARACTER_FETCH_NO_ACCESS.format(character_id=character_id))
             return
         except character_protocols.CharacterServiceProtocol.RepositoryError:
-            await message.reply(text=f"Unknown error while fetching character: {context.character_id}")
+            await message.reply(text=telegram_messages.CHARACTER_FETCH_UNKNOWN_ERROR.format(character_id=character_id))
             return
 
         roll_result = await self.roll_callback(character)
 
-        await message.reply(f"{roll_result.details}={roll_result.value}")
+        await message.reply(telegram_messages.ROLL_RESULT.format(details=roll_result.details, value=roll_result.value))
 
     @property
     def bot_commands(self) -> typing.Sequence[aiogram_types.BotCommand]:
