@@ -6,6 +6,8 @@ DnD Beyond Telegram Bot
 
 ## Usage
 
+Backend README is available [here](ddbot/README.md).
+
 ## Development
 
 ### Global dependencies
