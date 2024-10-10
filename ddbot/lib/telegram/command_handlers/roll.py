@@ -219,7 +219,7 @@ SKILL_CHECK_COMMANDS: list[SkillCheckCommand] = [
 
 class InitiativeCommand:
     command = "initiative"
-    description = "Roll initiative"
+    description = "Initiative check"
 
 
 INITIATIVE_COMMAND = InitiativeCommand()

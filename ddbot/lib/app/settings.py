@@ -4,6 +4,7 @@ import typing
 import pydantic
 import pydantic_settings
 
+import lib.telegram.command_handlers.help as help_command
 import lib.utils.logging as logging_utils
 
 
@@ -17,57 +18,8 @@ class TelegramSettings(pydantic_settings.BaseSettings):
     bot_name: str = "DndBeyond Character Bot"
     bot_short_description: str = "DndBeyond Character Bot"
     bot_description: str = "Telegram bot for rolling dices using DnD Beyond character sheets"
-
-    @property
-    def help_message(self) -> str:
-        result = (
-            "General commands:\n"
-            "/character_set - Set your character\n"
-            "/character_cache_clear - Clear your character cache\n\n"
-            "Ability check commands:\n"
-            "/str_check - Roll a strength check\n"
-            "/dex_check - Roll a dexterity check\n"
-            "/con_check - Roll a constitution check\n"
-            "/int_check - Roll an intelligence check\n"
-            "/wis_check - Roll a wisdom check\n"
-            "/cha_check - Roll a charisma check\n\n"
-            "Saving throw commands:\n"
-            "/str_save - Roll a strength saving throw\n"
-            "/dex_save - Roll a dexterity saving throw\n"
-            "/con_save - Roll a constitution saving throw\n"
-            "/int_save - Roll an intelligence saving throw\n"
-            "/wis_save - Roll a wisdom saving throw\n"
-            "/cha_save - Roll a charisma saving throw\n\n"
-            "Skill check commands:\n"
-            "/acrobatics - Roll an acrobatics check\n"
-            "/animal_handling - Roll an animal handling check\n"
-            "/arcana - Roll an arcana check\n"
-            "/athletics - Roll an athletics check\n"
-            "/deception - Roll a deception check\n"
-            "/history - Roll a history check\n"
-            "/insight - Roll an insight check\n"
-            "/intimidation - Roll an intimidation check\n"
-            "/investigation - Roll an investigation check\n"
-            "/medicine - Roll a medicine check\n"
-            "/nature - Roll a nature check\n"
-            "/perception - Roll a perception check\n"
-            "/performance - Roll a performance check\n"
-            "/persuasion - Roll a persuasion check\n"
-            "/religion - Roll a religion check\n"
-            "/sleight_of_hand - Roll a sleight of hand check\n"
-            "/stealth - Roll a stealth check\n"
-            "/survival - Roll a survival check\n\n"
-            "Miscellaneous checks:\n"
-            "/initiative - Roll an initiative check\n"
-            "Other commands:\n"
-            "/help - Show this message\n\n"
-            "In case of any issues check the repo: https://github.com/ovsds/ddbot"
-        )
-
-        for character in "_-.":
-            result = result.replace(character, f"\\{character}")
-
-        return result
+    help_message_template: str = help_command.DEFAULT_HELP_MESSAGE_TEMPLATE
+    help_message_escape_characters: str = "_-."
 
 
 class BaseContextRepositorySettings(pydantic_settings.BaseSettings):
