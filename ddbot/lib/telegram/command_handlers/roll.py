@@ -15,81 +15,113 @@ import lib.telegram.messages as telegram_messages
 logger = logging.getLogger(__name__)
 
 
-@dataclasses.dataclass
-class AbilityCheckCommand:
+class RollCallbackProtocol(typing.Protocol):
+    def __call__(self, character: character_models.Character) -> typing.Awaitable[character_models.RollResult]: ...
+
+
+@dataclasses.dataclass(frozen=True)
+class RollCommand:
+    command: str
+    description: str
+    callback: RollCallbackProtocol
+
+
+@dataclasses.dataclass(frozen=True)
+class RollCommandFactory:
+    command: str
+    description: str
+
+    def make(self, callback: RollCallbackProtocol) -> RollCommand:
+        return RollCommand(
+            command=self.command,
+            description=self.description,
+            callback=callback,
+        )
+
+
+class AbilityCallbackProtocol(typing.Protocol):
+    async def __call__(
+        self, character: character_models.Character, ability: character_models.CharacterAbility
+    ) -> character_models.RollResult: ...
+
+
+@dataclasses.dataclass(frozen=True)
+class AbilityCommandFactory:
     command: str
     description: str
     ability: character_models.CharacterAbility
 
+    def make(self, callback: AbilityCallbackProtocol) -> RollCommand:
+        async def wrapped_callback(character: character_models.Character) -> character_models.RollResult:
+            return await callback(character, self.ability)
 
-ABILITY_CHECK_COMMANDS: list[AbilityCheckCommand] = [
-    AbilityCheckCommand(
+        return RollCommand(
+            command=self.command,
+            description=self.description,
+            callback=wrapped_callback,
+        )
+
+
+ABILITY_CHECK_COMMAND_FACTORIES: list[AbilityCommandFactory] = [
+    AbilityCommandFactory(
         command="str_check",
         description="Strength check",
         ability=character_models.CharacterAbility.STRENGTH,
     ),
-    AbilityCheckCommand(
+    AbilityCommandFactory(
         command="dex_check",
         description="Dexterity check",
         ability=character_models.CharacterAbility.DEXTERITY,
     ),
-    AbilityCheckCommand(
+    AbilityCommandFactory(
         command="con_check",
         description="Constitution check",
         ability=character_models.CharacterAbility.CONSTITUTION,
     ),
-    AbilityCheckCommand(
+    AbilityCommandFactory(
         command="int_check",
         description="Intelligence check",
         ability=character_models.CharacterAbility.INTELLIGENCE,
     ),
-    AbilityCheckCommand(
+    AbilityCommandFactory(
         command="wis_check",
         description="Wisdom check",
         ability=character_models.CharacterAbility.WISDOM,
     ),
-    AbilityCheckCommand(
+    AbilityCommandFactory(
         command="cha_check",
         description="Charisma check",
         ability=character_models.CharacterAbility.CHARISMA,
     ),
 ]
 
-
-@dataclasses.dataclass
-class SavingThrowCommand:
-    command: str
-    description: str
-    ability: character_models.CharacterAbility
-
-
-SAVING_THROW_COMMANDS: list[SavingThrowCommand] = [
-    SavingThrowCommand(
+ABILITY_SAVE_COMMAND_FACTORIES: list[AbilityCommandFactory] = [
+    AbilityCommandFactory(
         command="str_save",
         description="Strength saving throw",
         ability=character_models.CharacterAbility.STRENGTH,
     ),
-    SavingThrowCommand(
+    AbilityCommandFactory(
         command="dex_save",
         description="Dexterity saving throw",
         ability=character_models.CharacterAbility.DEXTERITY,
     ),
-    SavingThrowCommand(
+    AbilityCommandFactory(
         command="con_save",
         description="Constitution saving throw",
         ability=character_models.CharacterAbility.CONSTITUTION,
     ),
-    SavingThrowCommand(
+    AbilityCommandFactory(
         command="int_save",
         description="Intelligence saving throw",
         ability=character_models.CharacterAbility.INTELLIGENCE,
     ),
-    SavingThrowCommand(
+    AbilityCommandFactory(
         command="wis_save",
         description="Wisdom saving throw",
         ability=character_models.CharacterAbility.WISDOM,
     ),
-    SavingThrowCommand(
+    AbilityCommandFactory(
         command="cha_save",
         description="Charisma saving throw",
         ability=character_models.CharacterAbility.CHARISMA,
@@ -97,118 +129,137 @@ SAVING_THROW_COMMANDS: list[SavingThrowCommand] = [
 ]
 
 
-@dataclasses.dataclass
-class SkillCheckCommand:
+class SkillCallbackProtocol(typing.Protocol):
+    async def __call__(
+        self,
+        character: character_models.Character,
+        ability: character_models.CharacterAbility,
+        skill: character_models.CharacterSkill,
+    ) -> character_models.RollResult: ...
+
+
+@dataclasses.dataclass(frozen=True)
+class SkillCommandFactory:
     command: str
     description: str
     ability: character_models.CharacterAbility
     skill: character_models.CharacterSkill
 
+    def make(self, callback: SkillCallbackProtocol) -> RollCommand:
+        async def wrapped_callback(character: character_models.Character) -> character_models.RollResult:
+            return await callback(character, self.ability, self.skill)
 
-SKILL_CHECK_COMMANDS: list[SkillCheckCommand] = [
-    SkillCheckCommand(
+        return RollCommand(
+            command=self.command,
+            description=self.description,
+            callback=wrapped_callback,
+        )
+
+
+SKILL_CHECK_COMMAND_FACTORIES: list[SkillCommandFactory] = [
+    SkillCommandFactory(
         command="acrobatics",
         description="Acrobatics check",
         ability=character_models.CharacterAbility.DEXTERITY,
         skill=character_models.CharacterSkill.ACROBATICS,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="animal_handling",
         description="Animal Handling check",
         ability=character_models.CharacterAbility.WISDOM,
         skill=character_models.CharacterSkill.ANIMAL_HANDLING,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="arcana",
         description="Arcana check",
         ability=character_models.CharacterAbility.INTELLIGENCE,
         skill=character_models.CharacterSkill.ARCANA,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="athletics",
         description="Athletics check",
         ability=character_models.CharacterAbility.STRENGTH,
         skill=character_models.CharacterSkill.ATHLETICS,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="deception",
         description="Deception check",
         ability=character_models.CharacterAbility.CHARISMA,
         skill=character_models.CharacterSkill.DECEPTION,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="history",
         description="History check",
         ability=character_models.CharacterAbility.INTELLIGENCE,
         skill=character_models.CharacterSkill.HISTORY,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="insight",
         description="Insight check",
         ability=character_models.CharacterAbility.WISDOM,
         skill=character_models.CharacterSkill.INSIGHT,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="intimidation",
         description="Intimidation check",
         ability=character_models.CharacterAbility.CHARISMA,
         skill=character_models.CharacterSkill.INTIMIDATION,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="investigation",
         description="Investigation check",
         ability=character_models.CharacterAbility.INTELLIGENCE,
         skill=character_models.CharacterSkill.INVESTIGATION,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="medicine",
         description="Medicine check",
         ability=character_models.CharacterAbility.WISDOM,
         skill=character_models.CharacterSkill.MEDICINE,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="nature",
         description="Nature check",
         ability=character_models.CharacterAbility.INTELLIGENCE,
         skill=character_models.CharacterSkill.NATURE,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="perception",
         description="Perception check",
         ability=character_models.CharacterAbility.WISDOM,
         skill=character_models.CharacterSkill.PERCEPTION,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="performance",
         description="Performance check",
         ability=character_models.CharacterAbility.CHARISMA,
         skill=character_models.CharacterSkill.PERFORMANCE,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="persuasion",
         description="Persuasion check",
         ability=character_models.CharacterAbility.CHARISMA,
         skill=character_models.CharacterSkill.PERSUASION,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="religion",
         description="Religion check",
         ability=character_models.CharacterAbility.INTELLIGENCE,
         skill=character_models.CharacterSkill.RELIGION,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="sleight_of_hand",
         description="Sleight of Hand check",
         ability=character_models.CharacterAbility.DEXTERITY,
         skill=character_models.CharacterSkill.SLEIGHT_OF_HAND,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="stealth",
         description="Stealth check",
         ability=character_models.CharacterAbility.DEXTERITY,
         skill=character_models.CharacterSkill.STEALTH,
     ),
-    SkillCheckCommand(
+    SkillCommandFactory(
         command="survival",
         description="Survival check",
         ability=character_models.CharacterAbility.WISDOM,
@@ -217,30 +268,22 @@ SKILL_CHECK_COMMANDS: list[SkillCheckCommand] = [
 ]
 
 
-class InitiativeCommand:
-    command = "initiative"
-    description = "Initiative check"
+INITIATIVE_COMMAND_FACTORY = RollCommandFactory(
+    command="initiative",
+    description="Initiative check",
+)
 
-
-INITIATIVE_COMMAND = InitiativeCommand()
-
-
-class DeathSavingThrowCommand:
-    command = "death_save"
-    description = "Death saving throw"
-
-
-DEATH_SAVING_THROW_COMMAND = DeathSavingThrowCommand()
+DEATH_SAVE_COMMAND_FACTORY = RollCommandFactory(
+    command="death_save",
+    description="Death saving throw",
+)
 
 
 @dataclasses.dataclass(frozen=True)
 class RollCommandHandler:
     context_service: context_protocols.ContextServiceProtocol
     character_service: character_protocols.CharacterServiceProtocol
-    roll_callback: character_protocols.RollCallbackProtocol
-
-    command: str
-    description: str
+    command: RollCommand
 
     async def process(self, message: aiogram.types.Message):
         if message.from_user is None:
@@ -278,7 +321,7 @@ class RollCommandHandler:
             await message.reply(text=telegram_messages.CHARACTER_FETCH_UNKNOWN_ERROR.format(character_id=character_id))
             return
 
-        roll_result = await self.roll_callback(character)
+        roll_result = await self.command.callback(character)
 
         await message.reply(telegram_messages.ROLL_RESULT.format(details=roll_result.details, value=roll_result.value))
 
@@ -286,8 +329,8 @@ class RollCommandHandler:
     def bot_commands(self) -> typing.Sequence[aiogram_types.BotCommand]:
         return [
             aiogram_types.BotCommand(
-                command=self.command,
-                description=self.description,
+                command=self.command.command,
+                description=self.command.description,
             )
         ]
 
@@ -301,10 +344,10 @@ class RollCommandHandler:
 
 
 __all__ = [
-    "ABILITY_CHECK_COMMANDS",
-    "DEATH_SAVING_THROW_COMMAND",
-    "INITIATIVE_COMMAND",
+    "ABILITY_CHECK_COMMAND_FACTORIES",
+    "ABILITY_SAVE_COMMAND_FACTORIES",
+    "DEATH_SAVE_COMMAND_FACTORY",
+    "INITIATIVE_COMMAND_FACTORY",
     "RollCommandHandler",
-    "SAVING_THROW_COMMANDS",
-    "SKILL_CHECK_COMMANDS",
+    "SKILL_CHECK_COMMAND_FACTORIES",
 ]

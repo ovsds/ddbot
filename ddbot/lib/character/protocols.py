@@ -39,10 +39,6 @@ class CharacterServiceProtocol(typing.Protocol):
         ...
 
 
-class RollCallbackProtocol(typing.Protocol):
-    def __call__(self, character: models.Character) -> typing.Awaitable[models.RollResult]: ...
-
-
 __all__ = [
     "CharacterRepositoryProtocol",
     "CharacterServiceProtocol",
