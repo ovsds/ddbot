@@ -148,7 +148,15 @@ tasks:
     desc: Run tests
     cmds:
       - echo 'Running pytest...'
-      - "{{.PENV}}/bin/python -m pytest tests {{.CLI_ARGS}}"
+      - "{{.PENV}}/bin/python -m pytest {{.PATH}} {{.CLI_ARGS}}"
+    vars:
+      PATH: '{{.PATH | default "tests"}}'
+
+  test-unit:
+    desc: Run unit tests
+    cmds:
+      - task: test
+        vars: { PATH: "tests/unit" }
 
   test-container:
     desc: Run tests in container

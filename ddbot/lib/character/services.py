@@ -38,8 +38,13 @@ class RollService:
         return (ability_score - 10) // 2
 
     @staticmethod
-    def _get_roll_value() -> int:
-        return random.randint(1, 20)
+    def _get_roll_result(modifier: int) -> models.RollResult:
+        roll_value = random.randint(1, 20)
+
+        return models.RollResult(
+            value=roll_value + modifier,
+            details=f"{roll_value}{'+' if modifier >= 0 else ''}{modifier}",
+        )
 
     async def roll_ability_check(
         self,
@@ -53,9 +58,7 @@ class RollService:
         ability_score = character.abilities[ability]
 
         modifier = self._get_modifier_from_ability_score(ability_score)
-        roll_value = self._get_roll_value()
-
-        return models.RollResult(value=roll_value + modifier, details=f"{roll_value}+{modifier}")
+        return self._get_roll_result(modifier)
 
     def get_ability_check_callback(self, ability: models.CharacterAbility) -> protocols.RollCallbackProtocol:
         async def callback(character: models.Character) -> models.RollResult:
@@ -77,9 +80,7 @@ class RollService:
         saving_throw_modifier = character.saving_throw_modifiers[ability]
 
         modifier = self._get_modifier_from_ability_score(ability_score) + saving_throw_modifier
-        roll_value = self._get_roll_value()
-
-        return models.RollResult(value=roll_value + modifier, details=f"{roll_value}+{modifier}")
+        return self._get_roll_result(modifier)
 
     def get_saving_throw_callback(self, ability: models.CharacterAbility) -> protocols.RollCallbackProtocol:
         async def callback(character: models.Character) -> models.RollResult:
@@ -102,9 +103,7 @@ class RollService:
         skill_modifier = character.skill_modifiers[skill]
 
         modifier = self._get_modifier_from_ability_score(ability_score) + skill_modifier
-        roll_value = self._get_roll_value()
-
-        return models.RollResult(value=roll_value + modifier, details=f"{roll_value}+{modifier}")
+        return self._get_roll_result(modifier)
 
     def get_skill_check_callback(
         self,
@@ -127,9 +126,7 @@ class RollService:
         dexterity_score = character.abilities[models.CharacterAbility.DEXTERITY]
 
         modifier = self._get_modifier_from_ability_score(dexterity_score) + character.initiative_modifier
-        roll_value = self._get_roll_value()
-
-        return models.RollResult(value=roll_value + modifier, details=f"{roll_value}+{modifier}")
+        return self._get_roll_result(modifier)
 
 
 __all__ = [
