@@ -145,13 +145,11 @@ class Application:
         )
         aiogram_general_commands.extend(character_cache_clear_command_handler.bot_commands)
 
-        for command in telegram_command_handlers.ABILITY_CHECK_COMMANDS:
+        for command_factory in telegram_command_handlers.ABILITY_CHECK_COMMAND_FACTORIES:
             roll_command_handler = telegram_command_handlers.RollCommandHandler(
                 context_service=context_service,
                 character_service=character_service,
-                roll_callback=roll_service.get_ability_check_callback(command.ability),
-                command=command.command,
-                description=command.description,
+                command=command_factory.make(callback=roll_service.roll_ability_check),
             )
             aiogram_dispatcher.message.register(
                 roll_command_handler.process,
@@ -159,13 +157,11 @@ class Application:
             )
             aiogram_ability_check_commands.extend(roll_command_handler.bot_commands)
 
-        for command in telegram_command_handlers.SAVING_THROW_COMMANDS:
+        for command_factory in telegram_command_handlers.ABILITY_SAVE_COMMAND_FACTORIES:
             roll_command_handler = telegram_command_handlers.RollCommandHandler(
                 context_service=context_service,
                 character_service=character_service,
-                roll_callback=roll_service.get_saving_throw_callback(command.ability),
-                command=command.command,
-                description=command.description,
+                command=command_factory.make(callback=roll_service.roll_saving_throw),
             )
             aiogram_dispatcher.message.register(
                 roll_command_handler.process,
@@ -173,13 +169,11 @@ class Application:
             )
             aiogram_saving_throw_commands.extend(roll_command_handler.bot_commands)
 
-        for command in telegram_command_handlers.SKILL_CHECK_COMMANDS:
+        for command_factory in telegram_command_handlers.SKILL_CHECK_COMMAND_FACTORIES:
             roll_command_handler = telegram_command_handlers.RollCommandHandler(
                 context_service=context_service,
                 character_service=character_service,
-                roll_callback=roll_service.get_skill_check_callback(command.ability, command.skill),
-                command=command.command,
-                description=command.description,
+                command=command_factory.make(callback=roll_service.roll_skill_check),
             )
             aiogram_dispatcher.message.register(
                 roll_command_handler.process,
@@ -190,9 +184,7 @@ class Application:
         roll_command_handler = telegram_command_handlers.RollCommandHandler(
             context_service=context_service,
             character_service=character_service,
-            roll_callback=roll_service.roll_initiative,
-            command=telegram_command_handlers.INITIATIVE_COMMAND.command,
-            description=telegram_command_handlers.INITIATIVE_COMMAND.description,
+            command=telegram_command_handlers.INITIATIVE_COMMAND_FACTORY.make(roll_service.roll_initiative),
         )
         aiogram_dispatcher.message.register(
             roll_command_handler.process,
@@ -203,9 +195,7 @@ class Application:
         roll_command_handler = telegram_command_handlers.RollCommandHandler(
             context_service=context_service,
             character_service=character_service,
-            roll_callback=roll_service.roll_death_saving_throw,
-            command=telegram_command_handlers.DEATH_SAVING_THROW_COMMAND.command,
-            description=telegram_command_handlers.DEATH_SAVING_THROW_COMMAND.description,
+            command=telegram_command_handlers.DEATH_SAVE_COMMAND_FACTORY.make(roll_service.roll_death_saving_throw),
         )
         aiogram_dispatcher.message.register(
             roll_command_handler.process,

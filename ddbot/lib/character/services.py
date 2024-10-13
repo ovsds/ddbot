@@ -60,12 +60,6 @@ class RollService:
         modifier = self._get_modifier_from_ability_score(ability_score)
         return self._get_roll_result(modifier)
 
-    def get_ability_check_callback(self, ability: models.CharacterAbility) -> protocols.RollCallbackProtocol:
-        async def callback(character: models.Character) -> models.RollResult:
-            return await self.roll_ability_check(character, ability)
-
-        return callback
-
     async def roll_saving_throw(
         self,
         character: models.Character,
@@ -81,12 +75,6 @@ class RollService:
 
         modifier = self._get_modifier_from_ability_score(ability_score) + saving_throw_modifier
         return self._get_roll_result(modifier)
-
-    def get_saving_throw_callback(self, ability: models.CharacterAbility) -> protocols.RollCallbackProtocol:
-        async def callback(character: models.Character) -> models.RollResult:
-            return await self.roll_saving_throw(character, ability)
-
-        return callback
 
     async def roll_skill_check(
         self,
@@ -104,16 +92,6 @@ class RollService:
 
         modifier = self._get_modifier_from_ability_score(ability_score) + skill_modifier
         return self._get_roll_result(modifier)
-
-    def get_skill_check_callback(
-        self,
-        ability: models.CharacterAbility,
-        skill: models.CharacterSkill,
-    ) -> protocols.RollCallbackProtocol:
-        async def callback(character: models.Character) -> models.RollResult:
-            return await self.roll_skill_check(character, ability, skill)
-
-        return callback
 
     async def roll_initiative(
         self,
