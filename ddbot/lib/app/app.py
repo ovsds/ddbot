@@ -200,6 +200,19 @@ class Application:
         )
         aiogram_miscellaneous_check_commands.extend(roll_command_handler.bot_commands)
 
+        roll_command_handler = telegram_command_handlers.RollCommandHandler(
+            context_service=context_service,
+            character_service=character_service,
+            roll_callback=roll_service.roll_death_saving_throw,
+            command=telegram_command_handlers.DEATH_SAVING_THROW_COMMAND.command,
+            description=telegram_command_handlers.DEATH_SAVING_THROW_COMMAND.description,
+        )
+        aiogram_dispatcher.message.register(
+            roll_command_handler.process,
+            *roll_command_handler.filters,
+        )
+        aiogram_miscellaneous_check_commands.extend(roll_command_handler.bot_commands)
+
         help_command_handler = telegram_command_handlers.HelpCommandHandler(
             text=telegram_command_handlers.render_help_message(
                 template=settings.telegram.help_message_template,

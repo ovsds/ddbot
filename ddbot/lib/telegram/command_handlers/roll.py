@@ -225,6 +225,14 @@ class InitiativeCommand:
 INITIATIVE_COMMAND = InitiativeCommand()
 
 
+class DeathSavingThrowCommand:
+    command = "death_save"
+    description = "Death saving throw"
+
+
+DEATH_SAVING_THROW_COMMAND = DeathSavingThrowCommand()
+
+
 @dataclasses.dataclass(frozen=True)
 class RollCommandHandler:
     context_service: context_protocols.ContextServiceProtocol
@@ -294,6 +302,7 @@ class RollCommandHandler:
 
 __all__ = [
     "ABILITY_CHECK_COMMANDS",
+    "DEATH_SAVING_THROW_COMMAND",
     "INITIATIVE_COMMAND",
     "RollCommandHandler",
     "SAVING_THROW_COMMANDS",

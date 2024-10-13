@@ -344,6 +344,9 @@ class CharacterData(pydantic.BaseModel):
         sub_type_id = self.Modifiers.SubType.INITIATIVE
         return self._get_subtype_proficiency_bonus(sub_type_id)
 
+    def _get_death_saving_throw_modifier(self) -> int:
+        return 0
+
     def to_dataclass(self) -> models.Character:
         return models.Character(
             id=self.id,
@@ -352,6 +355,7 @@ class CharacterData(pydantic.BaseModel):
             saving_throw_modifiers=self._get_saving_throw_modifiers(),
             skill_modifiers=self._get_skill_modifiers(),
             initiative_modifier=self._get_initiative_modifier(),
+            death_saving_throw_modifier=self._get_death_saving_throw_modifier(),
         )
 
 

@@ -128,6 +128,15 @@ class RollService:
         modifier = self._get_modifier_from_ability_score(dexterity_score) + character.initiative_modifier
         return self._get_roll_result(modifier)
 
+    async def roll_death_saving_throw(
+        self,
+        character: models.Character,
+    ) -> models.RollResult:
+        logger.debug(f"Rolling death saving throw for {character}")
+
+        modifier = character.death_saving_throw_modifier
+        return self._get_roll_result(modifier)
+
 
 __all__ = [
     "CharacterService",
