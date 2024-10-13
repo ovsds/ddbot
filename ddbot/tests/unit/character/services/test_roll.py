@@ -17,18 +17,6 @@ def fixture_fixed_random_seed() -> typing.Generator[None, None, None]:
         random.seed()
 
 
-@pytest.fixture(name="character")
-def fixture_character(fixed_random_seed: None) -> character_models.Character:
-    return character_models.Character(
-        id=1,
-        name="Test_Character",
-        abilities={ability: random.randint(6, 18) for ability in character_models.CharacterAbility},
-        saving_throw_modifiers={ability: random.randint(-3, 3) for ability in character_models.CharacterAbility},
-        skill_modifiers={skill: random.randint(-3, 3) for skill in character_models.CharacterSkill},
-        initiative_modifier=random.randint(-3, 3),
-    )
-
-
 @pytest.mark.usefixtures("fixed_random_seed")
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -135,4 +123,28 @@ async def test_roll_initiative(
     character.initiative_modifier = modifier_value
 
     result = await service.roll_initiative(character)
+    assert result == expected_result
+
+
+@pytest.mark.usefixtures("fixed_random_seed")
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "modifier_value, expected_result",
+    [
+        (-3, character_models.RollResult(value=4 - 3, details="4-3")),
+        (1, character_models.RollResult(value=4 + 1, details="4+1")),
+        (3, character_models.RollResult(value=4 + 3, details="4+3")),
+        (5, character_models.RollResult(value=4 + 5, details="4+5")),
+    ],
+)
+async def test_roll_death_saving_throw(
+    mocker: pytest_mock.MockFixture,
+    modifier_value: int,
+    expected_result: character_models.RollResult,
+):
+    service = character_services.RollService()
+    character = mocker.Mock(spec=character_models.Character)
+    character.death_saving_throw_modifier = modifier_value
+
+    result = await service.roll_death_saving_throw(character)
     assert result == expected_result

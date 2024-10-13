@@ -41,6 +41,7 @@ class Character:
     saving_throw_modifiers: typing.Mapping[CharacterAbility, int]
     skill_modifiers: typing.Mapping[CharacterSkill, int]
     initiative_modifier: int
+    death_saving_throw_modifier: int
 
 
 @dataclasses.dataclass
