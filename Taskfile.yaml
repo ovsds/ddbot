@@ -94,16 +94,27 @@ tasks:
       - echo 'Updating node dependencies...'
       - task: _with_nvm
         vars: { COMMAND: "npm update" }
-      - task: _with_nvm
-        vars: { COMMAND: "npm outdated" }
-      - task: _with_nvm
-        vars: { COMMAND: "npm audit" }
 
       - echo 'Updating .scripts dependencies...'
       - task: scripts:dependencies-update
 
       - for: { var: SERVICES, as: SERVICE }
         task: "{{.SERVICE}}:dependencies-update"
+
+  dependencies-check:
+    desc: Check dependencies
+    cmds:
+      - echo 'Checking node dependencies...'
+      - task: _with_nvm
+        vars: { COMMAND: "npm outdated" }
+      - task: _with_nvm
+        vars: { COMMAND: "npm audit" }
+
+      - echo 'Checking .scripts dependencies...'
+      - task: scripts:dependencies-check
+
+      - for: { var: SERVICES, as: SERVICE }
+        task: "{{.SERVICE}}:dependencies-check"
 
   update-from-template:
     desc: Update project from template
@@ -114,12 +125,12 @@ tasks:
         --overwrite-if-exists
         --output-dir ../
         {{.TEMPLATE_PATH}}
-        project_name="DnD Beyond Telegram Bot"
-        project_slug="ddbot"
-        node_version="v20.15.1"
-        owner_name="Dmitry Ovsiannikov"
-        owner_github_login="ovsds"
-        scripts="true"
-        services="ddbot"
+        project_name='DnD Beyond Telegram Bot'
+        project_slug='ddbot'
+        node_version='v20.15.1'
+        owner_name='Dmitry Ovsiannikov'
+        owner_github_login='ovsds'
+        scripts='true'
+        services='ddbot'
     vars:
       TEMPLATE_PATH: '{{.TEMPLATE_PATH | default "https://github.com/ovsds/template-repository"}}'

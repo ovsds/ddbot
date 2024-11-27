@@ -216,6 +216,10 @@ tasks:
     cmds:
       - echo 'Updating python dependencies...'
       - poetry update
+
+  dependencies-check:
+    desc: Check for outdated dependencies
+    cmds:
       - poetry show --outdated
 
   dev-server-start:
