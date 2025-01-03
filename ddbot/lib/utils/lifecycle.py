@@ -1,52 +1,73 @@
+import asyncio
 import dataclasses
 import logging
 import typing
 
-AsyncCallback = typing.Awaitable[typing.Any]
-SyncCallback = typing.Callable[[], typing.Any]
-Callback = AsyncCallback | SyncCallback
+Awaitable = typing.Awaitable[typing.Any]
+Task = asyncio.Task[typing.Any]
 
 
 @dataclasses.dataclass
-class ShutdownCallback:
-    callback: Callback
+class Callback:
+    awaitable: Awaitable
     error_message: str
     success_message: str
 
     @classmethod
-    def from_disposable_resource(cls, name: str, dispose_callback: Callback) -> typing.Self:
+    def from_dispose(cls, name: str, awaitable: Awaitable) -> typing.Self:
         return cls(
-            callback=dispose_callback,
+            awaitable=awaitable,
             error_message=f"Failed to dispose {name}",
             success_message=f"{name} has been disposed",
         )
 
 
-@dataclasses.dataclass
-class StartupCallback:
-    callback: Callback
-    error_message: str
-    success_message: str
-
-
 @dataclasses.dataclass(frozen=True)
-class LifecycleManager:
+class Lifecycle:
     logger: logging.Logger
-    startup_callbacks: typing.Iterable[StartupCallback]
-    shutdown_callbacks: typing.Iterable[ShutdownCallback]
-    run_callback: AsyncCallback
+
+    main_tasks: typing.Sequence[asyncio.Task[typing.Any]] = dataclasses.field(default_factory=list)
+    startup_callbacks: typing.Sequence[Callback] = dataclasses.field(default_factory=list)
+    shutdown_callbacks: typing.Sequence[Callback] = dataclasses.field(default_factory=list)
 
     class StartupError(Exception): ...
 
     class ShutdownError(Exception): ...
 
+    async def run(self) -> None:
+        if len(self.main_tasks) == 0:
+            self.logger.warning("No run callbacks have been registered")
+            return
+
+        try:
+            for task in asyncio.as_completed(self.main_tasks):
+                await task
+                raise RuntimeError("One of the main tasks has unexpectedly finished")
+        except Exception:
+            self.logger.error("An error occurred during the main tasks execution")
+
+            for task in self.main_tasks:
+                if not task.done():
+                    continue
+
+                if task.exception() is not None:
+                    self.logger.error(f"Task {task.get_name()} has failed with exception")
+                else:
+                    self.logger.error(f"Task {task.get_name()} has unexpectedly finished")
+
+            for task in self.main_tasks:
+                if task.done():
+                    continue
+
+                task.cancel()
+                self.logger.error(f"Task {task.get_name()} has been cancelled")
+
+            raise
+
     async def on_startup(self) -> None:
         for callback in self.startup_callbacks:
             try:
-                if isinstance(callback.callback, typing.Awaitable):
-                    await callback.callback
-                else:
-                    callback.callback()
+                await callback.awaitable
             except Exception as error:
                 self.logger.exception(callback.error_message)
                 raise self.StartupError from error
@@ -58,10 +79,7 @@ class LifecycleManager:
 
         for callback in self.shutdown_callbacks:
             try:
-                if isinstance(callback.callback, typing.Awaitable):
-                    await callback.callback
-                else:
-                    callback.callback()
+                await callback.awaitable
             except Exception as error:
                 errors.append(error)
                 self.logger.exception(callback.error_message)
@@ -71,12 +89,9 @@ class LifecycleManager:
         if len(errors) != 0:
             raise self.ShutdownError
 
-    async def run(self) -> None:
-        await self.run_callback
-
 
 __all__ = [
-    "LifecycleManager",
-    "ShutdownCallback",
-    "StartupCallback",
+    "Callback",
+    "Lifecycle",
+    "Task",
 ]

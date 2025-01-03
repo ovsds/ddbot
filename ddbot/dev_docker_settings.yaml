@@ -1,5 +1,8 @@
-logs:
-  level: DEBUG
+app:
+  env: development
+  debug: true
+telegram:
+  webhook_secret_token: DEFINITELY_NOT_A_SECRET
 context:
   type: redis
   host: ddbot.redis_master

@@ -11,13 +11,18 @@ vars:
   PYTHON_FILES:
     sh: find {{.SOURCE_FOLDERS}} -name '*.py' | tr '\n' ' '
 
-  IMAGE_NAME: "ddbot"
+  DEFAULT_IMAGE_NAME: "ddbot"
 
   DOCKER_FOLDER: "{{.TASKFILE_DIR}}/../docker"
   DOCKER_NETWORK: "ddbot_network"
 
 env:
+  NGROK_PORT: "8080"
   SETTINGS_YAML: "{{.TASKFILE_DIR}}/dev_settings.yaml"
+
+  SERVER__HOST: "0.0.0.0"
+  SERVER__PORT: "8080"
+  SERVER__PUBLIC_HOST: "https://{{.NGROK_DOMAIN}}"
 
 tasks:
   _python:
@@ -38,9 +43,7 @@ tasks:
   _sort_all:
     internal: true
     cmds:
-      - cmd: "{{.PENV}}/bin/sort-all {{.COMMAND}} || [ {{.IGNORE_ERRORS}} = 'true' ]"
-    vars:
-      IGNORE_ERRORS: '{{.IGNORE_ERRORS | default "true"}}'
+      - cmd: "{{.PENV}}/bin/sort-all {{.COMMAND}}"
 
   _deptry:
     internal: true
@@ -73,11 +76,9 @@ tasks:
       - task: _toml-sort
         vars: { COMMAND: "--check {{.TOML_FILES}}" }
 
-      - echo 'Running sort-all autofixes...'
+      - echo 'Running sort-all checks...'
       - task: _sort_all
-        vars:
-          COMMAND: "{{.PYTHON_FILES}}"
-          IGNORE_ERRORS: "false"
+        vars: { COMMAND: "--check {{.PYTHON_FILES}}" }
       - echo ''
 
       - echo 'Running ruff checks...'
@@ -108,7 +109,7 @@ tasks:
 
       - echo 'Running sort-all fixes...'
       - task: _sort_all
-        vars: { COMMAND: "{{.PYTHON_FILES}}" }
+        vars: { COMMAND: "--no-error-on-fix {{.PYTHON_FILES}}" }
 
       - echo 'Running ruff fixes...'
       - task: _python
@@ -117,21 +118,13 @@ tasks:
       - echo 'Running pyright fixes...'
       - task: _pyright
 
-  image-build:
-    desc: Build image target for local usage
-    requires:
-      vars:
-        - TARGET
+  image-bake:
     cmds:
-      - echo 'Building image {{.TARGET}} target...'
-      - docker build
-        --tag {{.IMAGE_NAME}}:{{.TARGET}}
-        {{ if .TAG }}--tag {{.TAG}}{{ end }}
-        --target {{.TARGET}}
-        .
+      - echo 'Building image {{.TARGET}}...'
+      - docker buildx bake {{.TARGET}}
 
   image-run:
-    desc: Run image target in container
+    desc: Run image in container
     requires:
       vars:
         - TARGET
@@ -139,10 +132,11 @@ tasks:
       - echo 'Running image {{.TARGET}} target...'
       - docker run
         --network {{.DOCKER_NETWORK}}
+        --publish {{.SERVER__PORT}}:{{.SERVER__PORT}}
         --env-file <( env| cut -f1 -d= )
         --volume {{.TASKFILE_DIR}}/dev_docker_settings.yaml:/settings.yaml
         --env SETTINGS_YAML=/settings.yaml
-        {{.IMAGE_NAME}}:{{.TARGET}}
+        {{.DEFAULT_IMAGE_NAME}}:{{.TARGET}}
 
   test:
     desc: Run tests
@@ -162,10 +156,8 @@ tasks:
   test-container:
     desc: Run tests in container
     cmds:
-      - task: image-build
-        vars: { TARGET: tests }
-
-      - echo 'Running tests...'
+      - task: image-bake
+        vars: { TARGET: tests_dev }
       - task: image-run
         vars: { TARGET: tests }
 
@@ -218,8 +210,9 @@ tasks:
       - poetry update
 
   dependencies-check:
-    desc: Check for outdated dependencies
+    desc: Check python dependencies
     cmds:
+      - echo 'Checking python dependencies...'
       - poetry show --outdated
 
   dev-server-start:
@@ -229,13 +222,19 @@ tasks:
       - task: _python
         vars: { COMMAND: "-m bin.main" }
 
+  dev-server-tunnel-start:
+    desc: Start ngrok tunnel for development application
+    cmds:
+      - echo 'Setting up ngrok...'
+      - ngrok config add-authtoken $NGROK_AUTH_TOKEN
+      - echo 'Starting ngrok tunnel...'
+      - ngrok http --domain=$NGROK_DOMAIN $NGROK_PORT
+
   dev-server-start-container:
     desc: Start development application in container
     cmds:
-      - task: image-build
-        vars: { TARGET: runtime }
-
-      - echo 'Running container...'
+      - task: image-bake
+        vars: { TARGET: runtime_dev }
       - task: image-run
         vars: { TARGET: runtime }
 
@@ -262,20 +261,13 @@ tasks:
         service_name="DnD Beyond Telegram Bot"
         service_slug="ddbot"
         service_short_slug="ddbot"
+        with_trivy="false"
+        with_ngrok="true"
+        with_aiogram_utils="true"
+        with_aiohttp_utils="true"
+        with_json_utils="true"
     vars:
       TEMPLATE_PATH: '{{.TEMPLATE_PATH | default "https://github.com/ovsds/template-service-python"}}'
-
-  ci-image-build:
-    desc: Build image target for CI usage
-    requires:
-      vars:
-        - IMAGE_TAG
-        - IMAGE_REGISTRY
-    cmds:
-      - task: image-build
-        vars:
-          TARGET: runtime
-          TAG: "{{.IMAGE_REGISTRY}}/{{.IMAGE_NAME}}:{{.IMAGE_TAG}}"
 
   ci-image-push:
     desc: Push image to registry for CI usage
@@ -284,5 +276,5 @@ tasks:
         - IMAGE_TAG
         - IMAGE_REGISTRY
     cmds:
-      - echo 'Uploading backend image...'
-      - docker push {{.IMAGE_REGISTRY}}/{{.IMAGE_NAME}}:{{.IMAGE_TAG}}
+      - task: image-bake
+        vars: { TARGET: runtime }
