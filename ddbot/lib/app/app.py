@@ -6,7 +6,10 @@ import typing
 
 import aiogram
 import aiogram.types as aiogram_types
+import aiogram.webhook.aiohttp_server as aiogram_aiohttp_webhook
 import aiohttp
+import aiohttp.typedefs as aiohttp_typedefs
+import aiohttp.web as aiohttp_web
 import redis.asyncio as redis_asyncio
 
 import lib.app.errors as app_errors
@@ -17,7 +20,8 @@ import lib.character.services as character_services
 import lib.context.repositories as context_repositories
 import lib.context.services as context_services
 import lib.telegram.command_handlers as telegram_command_handlers
-import lib.telegram.lifecycle as telegram_lifecycle
+import lib.utils.aiogram as aiogram_utils
+import lib.utils.aiohttp as aiohttp_utils
 import lib.utils.cache as cache_utils
 import lib.utils.lifecycle as lifecycle_utils
 import lib.utils.logging as logging_utils
@@ -27,48 +31,46 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass(frozen=True)
 class Application:
-    lifecycle_manager: lifecycle_utils.LifecycleManager
+    lifecycle: lifecycle_utils.Lifecycle
 
     @classmethod
     def from_settings(cls, settings: app_settings.Settings) -> typing.Self:
-        # Logging
-
-        logging_utils.initialize(
-            config=logging_utils.create_config(
-                log_level=settings.logs.level,
-                log_format=settings.logs.format,
-                loggers={
-                    "asyncio": logging_utils.LoggerConfig(
-                        propagate=False,
-                        level=settings.logs.level,
-                    ),
-                },
-            ),
+        log_level = "DEBUG" if settings.app.is_debug else settings.logs.level
+        logging_config = logging_utils.create_config(
+            log_level=log_level,
+            log_format=settings.logs.format,
+            loggers={
+                "asyncio": logging_utils.LoggerConfig(
+                    propagate=False,
+                    level=log_level,
+                ),
+            },
         )
+        logging_utils.initialize(config=logging_config)
+        logger.info("Logging has been initialized with config: %s", logging_config)
 
         logger.info("Initializing application")
 
-        startup_callbacks: list[lifecycle_utils.StartupCallback] = []
-        shutdown_callbacks: list[lifecycle_utils.ShutdownCallback] = []
+        lifecycle_main_tasks: list[asyncio.Task[typing.Any]] = []
+        lifecycle_startup_callbacks: list[lifecycle_utils.Callback] = []
+        lifecycle_shutdown_callbacks: list[lifecycle_utils.Callback] = []
 
-        # Clients
-
-        logger.info("Initializing clients")
+        logger.info("Initializing global dependencies")
 
         aiohttp_client = aiohttp.ClientSession()
-        shutdown_callbacks.append(
-            lifecycle_utils.ShutdownCallback(
-                callback=aiohttp_client.close(),
+        lifecycle_shutdown_callbacks.append(
+            lifecycle_utils.Callback(
+                awaitable=aiohttp_client.close(),
                 error_message="Error while closing aiohttp client",
                 success_message="Aiohttp client has been closed",
             ),
         )
 
+        logger.info("Initializing clients")
+
         character_client = character_clients.CharacterDdbClient(
             base_client=aiohttp_client,
         )
-
-        # Repositories
 
         logger.info("Initializing repositories")
 
@@ -83,9 +85,9 @@ class Application:
                 db=settings.context.db,
                 password=settings.context.password,
             )
-            shutdown_callbacks.append(
-                lifecycle_utils.ShutdownCallback(
-                    callback=context_redis_client.aclose(),
+            lifecycle_shutdown_callbacks.append(
+                lifecycle_utils.Callback(
+                    awaitable=context_redis_client.aclose(),
                     error_message="Error while closing redis client",
                     success_message="Redis client has been closed",
                 ),
@@ -100,8 +102,6 @@ class Application:
             ttl=datetime.timedelta(seconds=settings.character.cache_ttl_seconds),
         )
 
-        # Services
-
         logger.info("Initializing services")
 
         context_service = context_services.LocalContextService(repository=context_repository)
@@ -111,20 +111,19 @@ class Application:
         )
         roll_service = character_services.RollService()
 
-        # Telegram
+        logger.info("Initializing aiogram")
 
-        logger.info("Initializing telegram client")
         aiogram_bot = aiogram.Bot(token=settings.telegram.token)
         aiogram_dispatcher = aiogram.Dispatcher()
+
         aiogram_general_commands: list[aiogram_types.BotCommand] = []
         aiogram_ability_check_commands: list[aiogram_types.BotCommand] = []
         aiogram_saving_throw_commands: list[aiogram_types.BotCommand] = []
         aiogram_skill_check_commands: list[aiogram_types.BotCommand] = []
         aiogram_miscellaneous_check_commands: list[aiogram_types.BotCommand] = []
 
-        # Handlers
+        logger.info("Initializing aiogram handlers")
 
-        logger.info("Initializing command_handlers")
         character_set_command_handler = telegram_command_handlers.CharacterSetCommandHandler(
             context_service=context_service,
             character_service=character_service,
@@ -217,35 +216,94 @@ class Application:
         aiogram_dispatcher.message.register(help_command_handler.process, *help_command_handler.filters)
         aiogram_general_commands.extend(help_command_handler.bot_commands)
 
-        logger.info("Initializing lifecycle manager")
-
-        aiogram_lifecycle = telegram_lifecycle.AiogramLifecycle(
+        aiogram_lifecycle = aiogram_utils.Lifecycle(
+            dispatcher=aiogram_dispatcher,
+            bot=aiogram_bot,
             logger=logger,
-            aiogram_bot=aiogram_bot,
-            bot_name=settings.telegram.bot_name,
-            bot_short_description=settings.telegram.bot_short_description,
-            bot_description=settings.telegram.bot_description,
-            bot_commands=[
+            name=settings.telegram.bot_name,
+            description=settings.telegram.bot_description,
+            short_description=settings.telegram.bot_short_description,
+            commands=[
                 *aiogram_general_commands,
                 *aiogram_ability_check_commands,
                 *aiogram_saving_throw_commands,
                 *aiogram_skill_check_commands,
                 *aiogram_miscellaneous_check_commands,
             ],
+            webhook=(
+                aiogram_utils.Lifecycle.Webhook(
+                    url=f"{settings.server.public_host}{settings.telegram.webhook_url}",
+                    secret_token=settings.telegram.webhook_secret_token,
+                )
+                if settings.telegram.webhook_enabled
+                else None
+            ),
         )
-        startup_callbacks.extend(aiogram_lifecycle.get_startup_callbacks())
-        shutdown_callbacks.extend(aiogram_lifecycle.get_shutdown_callbacks())
+        lifecycle_startup_callbacks.extend(aiogram_lifecycle.get_startup_callbacks())
+        lifecycle_shutdown_callbacks.extend(aiogram_lifecycle.get_shutdown_callbacks())
+        if not settings.telegram.webhook_enabled:
+            lifecycle_main_tasks.append(aiogram_lifecycle.get_main_task())
 
-        lifecycle_manager = lifecycle_utils.LifecycleManager(
+        logger.info("Initializing aiohttp")
+
+        aiohttp_url_dispatcher = aiohttp_web.UrlDispatcher()
+
+        logger.info("Initializing aiohttp middlewares")
+
+        aiohttp_middlewares: list[aiohttp_typedefs.Middleware] = []
+
+        logger.info("Initializing aiohttp handlers")
+
+        aiohttp_liveness_probe_handler = aiohttp_utils.LivenessProbeHandler()
+        aiohttp_url_dispatcher.add_route("GET", "/api/v1/health/liveness", aiohttp_liveness_probe_handler.process)
+
+        aiohttp_readiness_probe_handler = aiohttp_utils.ReadinessProbeHandler(
+            subsystems=[],
+        )
+        aiohttp_url_dispatcher.add_route("GET", "/api/v1/health/readiness", aiohttp_readiness_probe_handler.process)
+
+        if settings.telegram.webhook_enabled:
+            aiohttp_telegram_webhook_handler = aiogram_aiohttp_webhook.SimpleRequestHandler(
+                bot=aiogram_bot,
+                dispatcher=aiogram_dispatcher,
+                secret_token=settings.telegram.webhook_secret_token,
+            )
+            aiohttp_url_dispatcher.add_route(
+                "POST",
+                settings.telegram.webhook_url,
+                aiohttp_telegram_webhook_handler.handle,
+            )
+
+        logger.info("Initializing aiohttp application")
+
+        aiohttp_app = aiohttp_web.Application(
+            middlewares=aiohttp_middlewares,
+            router=aiohttp_url_dispatcher,
+        )
+        lifecycle_main_tasks.append(
+            asyncio.create_task(
+                coro=aiohttp_web._run_app(  # pyright: ignore[reportPrivateUsage]
+                    app=aiohttp_app,
+                    host=settings.server.host,
+                    port=settings.server.port,
+                    print=aiohttp_utils.PrintLogger(),
+                ),
+                name="aiohttp_app",
+            )
+        )
+
+        logger.info("Initializing lifecycle manager")
+
+        lifecycle = lifecycle_utils.Lifecycle(
             logger=logger,
-            startup_callbacks=startup_callbacks,
-            shutdown_callbacks=reversed(shutdown_callbacks),
-            run_callback=aiogram_dispatcher.start_polling(aiogram_bot),
+            main_tasks=lifecycle_main_tasks,
+            startup_callbacks=lifecycle_startup_callbacks,
+            shutdown_callbacks=list(reversed(lifecycle_shutdown_callbacks)),
         )
 
         logger.info("Creating application")
         application = cls(
-            lifecycle_manager=lifecycle_manager,
+            lifecycle=lifecycle,
         )
 
         logger.info("Initializing application finished")
@@ -254,14 +312,14 @@ class Application:
 
     async def start(self) -> None:
         try:
-            await self.lifecycle_manager.on_startup()
-        except lifecycle_utils.LifecycleManager.StartupError as start_error:
+            await self.lifecycle.on_startup()
+        except lifecycle_utils.Lifecycle.StartupError as start_error:
             logger.error("Application has failed to start")
             raise app_errors.ServerStartError("Application has failed to start, see logs above") from start_error
 
         logger.info("Application is starting")
         try:
-            await self.lifecycle_manager.run()
+            await self.lifecycle.run()
         except asyncio.CancelledError:
             logger.info("Application has been interrupted")
         except BaseException as unexpected_error:
@@ -272,8 +330,8 @@ class Application:
         logger.info("Application is shutting down...")
 
         try:
-            await self.lifecycle_manager.on_shutdown()
-        except lifecycle_utils.LifecycleManager.ShutdownError as dispose_error:
+            await self.lifecycle.on_shutdown()
+        except lifecycle_utils.Lifecycle.ShutdownError as dispose_error:
             logger.error("Application has shut down with errors")
             raise app_errors.DisposeError("Application has shut down with errors, see logs above") from dispose_error
 
