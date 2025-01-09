@@ -1,6 +1,11 @@
-.scripts/.venv
+# Environment variables
+.env
 
-ddbot/.pytest_cache
-ddbot/.ruff_cache
-ddbot/.venv
-ddbot/htmlcov
+# Python Dependencies
+.venv/
+
+# Python cache
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.coverage/

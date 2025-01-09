@@ -6,8 +6,8 @@
 
 #### Application
 
-- `APP__ENV` - Application environment, can be one of `development`, `testing`, `staging`, `production`. Default is `production`.
-- `APP__DEBUG` - Application debug mode, can be `true` or `false`. Default is `false`.
+- `APP__ENV` - application environment, can be one of `development`, `testing`, `staging`, `production`. Default is `production`.
+- `APP__DEBUG` - application debug mode, can be `true` or `false`. Default is `false`.
 
 #### Logging
 

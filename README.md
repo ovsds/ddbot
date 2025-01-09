@@ -14,6 +14,7 @@ Backend README is available [here](ddbot/README.md).
 
 - [Taskfile](https://taskfile.dev/installation/)
 - [nvm](https://github.com/nvm-sh/nvm?tab=readme-ov-file#install--update-script)
+- [zizmor](https://woodruffw.github.io/zizmor/installation/) - used for GHA security scanning
 
 ### Taskfile commands
 

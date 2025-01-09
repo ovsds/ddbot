@@ -1,7 +1,7 @@
-version: "3"
-
 services:
   redis_master:
+    ports:
+      - "${REDIS_MASTER_PORT}:${REDIS_MASTER_PORT}"
     volumes:
       - redis_master_data:/data
 
