@@ -1,17 +1,17 @@
-import os
 import typing
 import warnings
 
 import pydantic
-import pydantic_settings
 
 import lib.telegram.command_handlers.help as help_command
 import lib.utils.logging as logging_utils
+import lib.utils.pydantic as pydantic_utils
 
 
-class AppSettings(pydantic.BaseModel):
+class AppSettings(pydantic_utils.BaseSettingsModel):
     env: str = "production"
     debug: bool = False
+    version: str = "unknown"
 
     @property
     def is_development(self) -> bool:
@@ -25,18 +25,18 @@ class AppSettings(pydantic.BaseModel):
         return self.debug
 
 
-class LoggingSettings(pydantic.BaseModel):
+class LoggingSettings(pydantic_utils.BaseSettingsModel):
     level: logging_utils.LogLevel = "INFO"
     format: str = "%(asctime)s | %(name)s | %(levelname)s | %(message)s"
 
 
-class ServerSettings(pydantic.BaseModel):
+class ServerSettings(pydantic_utils.BaseSettingsModel):
     host: str = "localhost"
     port: int = 8080
     public_host: str = NotImplemented
 
 
-class TelegramSettings(pydantic_settings.BaseSettings):
+class TelegramSettings(pydantic_utils.BaseSettingsModel):
     token: str = NotImplemented
     bot_name: str = "DndBeyond Character Bot"
     bot_short_description: str = "DndBeyond Character Bot"
@@ -49,7 +49,7 @@ class TelegramSettings(pydantic_settings.BaseSettings):
     webhook_secret_token: str = NotImplemented
 
 
-class BaseContextRepositorySettings(pydantic_settings.BaseSettings):
+class BaseContextRepositorySettings(pydantic_utils.BaseSettingsModel):
     type: typing.Any
 
 
@@ -84,11 +84,11 @@ def _context_repository_settings_factory(data: typing.Any) -> BaseContextReposit
     return settings_class.model_validate(data)
 
 
-class CharacterSettings(pydantic_settings.BaseSettings):
+class CharacterSettings(pydantic_utils.BaseSettingsModel):
     cache_ttl_seconds: int = 60 * 60
 
 
-class Settings(pydantic_settings.BaseSettings):
+class Settings(pydantic_utils.BaseSettings):
     app: AppSettings = pydantic.Field(default_factory=AppSettings)
     logs: LoggingSettings = pydantic.Field(default_factory=LoggingSettings)
     server: ServerSettings = pydantic.Field(default_factory=ServerSettings)
@@ -98,47 +98,6 @@ class Settings(pydantic_settings.BaseSettings):
         pydantic.BeforeValidator(_context_repository_settings_factory),
     ] = pydantic.Field(default_factory=LocalContextRepositorySettings)
     character: CharacterSettings = pydantic.Field(default_factory=CharacterSettings)
-
-    model_config = pydantic_settings.SettingsConfigDict(
-        env_nested_delimiter="__",
-    )
-
-    @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls: type[pydantic_settings.BaseSettings],
-        init_settings: pydantic_settings.PydanticBaseSettingsSource,
-        env_settings: pydantic_settings.PydanticBaseSettingsSource,
-        dotenv_settings: pydantic_settings.PydanticBaseSettingsSource,
-        file_secret_settings: pydantic_settings.PydanticBaseSettingsSource,
-    ) -> tuple[pydantic_settings.PydanticBaseSettingsSource, ...]:
-        return (
-            env_settings,
-            pydantic_settings.YamlConfigSettingsSource(
-                settings_cls,
-            ),
-            *cls.settings_yaml_sources(settings_cls),
-        )
-
-    @classmethod
-    def settings_yaml_sources(
-        cls,
-        settings_cls: type[pydantic_settings.BaseSettings],
-    ) -> typing.Sequence[pydantic_settings.YamlConfigSettingsSource]:
-        yaml_file_path = os.environ.get("SETTINGS_YAML", None)
-
-        if yaml_file_path is None:
-            return []
-
-        if not os.path.exists(yaml_file_path):
-            raise FileNotFoundError(f"Settings file not found: {yaml_file_path}")
-
-        return [
-            pydantic_settings.YamlConfigSettingsSource(
-                settings_cls,
-                yaml_file=yaml_file_path,
-            )
-        ]
 
 
 __all__ = [

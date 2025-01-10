@@ -1,11 +1,16 @@
 app:
   env: development
   debug: true
+server:
+  host: "0.0.0.0"
+  port: 8080
+  public_host: "https://${NGROK_DOMAIN}"
 telegram:
+  token: ${TELEGRAM_TOKEN}
   webhook_secret_token: DEFINITELY_NOT_A_SECRET
 context:
   type: redis
-  host: localhost
-  port: 6379
+  host: ${REDIS_MASTER_HOST}
+  port: ${REDIS_MASTER_PORT}
   db: 0
-  password: ddbot_pass
+  password: ${REDIS_PASSWORD}

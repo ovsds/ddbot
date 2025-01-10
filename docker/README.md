@@ -1,12 +1,13 @@
-# ddbot Docker
+# Docker
 
-Configs and commands for additional dockerized services.
+Configs and commands for auxiliary services.
 
 ## Usage
 
 ### Global dependencies
 
-- [docker](https://github.com/ovsds-personal/wiki/blob/master/src/global_dependencies/docker/README.md)
+- [docker](https://docs.docker.com/engine/install/)
+- [docker-compose](https://docs.docker.com/compose/install/)
 
 ### Taskfile commands
 

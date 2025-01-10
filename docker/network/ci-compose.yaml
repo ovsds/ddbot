@@ -1,6 +1,0 @@
-version: "3"
-
-networks:
-  default:
-    name: ${EXTERNAL_DOCKER_NETWORK}
-    external: true
